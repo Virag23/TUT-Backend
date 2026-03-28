@@ -5,10 +5,11 @@ const ADDRESS = 'Plot No. 189/190, Kapsi (Khurd), Near Pardi Naka, Bhandara Road
 
 function getTransporter() {
   return nodemailer.createTransport({
-    service: 'gmail',
-    auth: { user: process.env.EMAIL_USER, pass: process.env.EMAIL_PASS },
-    tls: { rejectUnauthorized: false },
+    host: 'smtp.gmail.com',
+    port: 465,
+    secure: true,
     family: 4,
+    auth: { user: process.env.EMAIL_USER, pass: process.env.EMAIL_PASS },
   });
 }
 
