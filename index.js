@@ -1,12 +1,10 @@
+import 'dotenv/config';
 import express from 'express';
 import cors from 'cors';
-import dotenv from 'dotenv';
 import mongoose from 'mongoose';
 import bookingRoutes from './routes/bookings.js';
 import inquiryRoutes from './routes/inquiries.js';
 import statsRoutes from './routes/stats.js';
-
-dotenv.config();
 
 const app = express();
 const PORT = process.env.PORT || 5000;
@@ -24,10 +22,9 @@ mongoose
   .connect(process.env.MONGO_URI)
   .then(() => {
     console.log('✅ MongoDB connected');
-    app.listen(PORT, () => console.log(`🚀 Server running on port ${PORT}`));
+    app.listen(PORT, () => console.log(`Server running on port ${PORT}`));
   })
   .catch((err) => {
     console.error('❌ MongoDB connection error:', err.message);
-    // Still start server for local dev without DB
-    app.listen(PORT, () => console.log(`⚠️  Server running on port ${PORT} (no DB)`));
+    app.listen(PORT, () => console.log(`Server running on port ${PORT} (no DB)`));
   });

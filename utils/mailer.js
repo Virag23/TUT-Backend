@@ -1,77 +1,132 @@
 import nodemailer from 'nodemailer';
 
-const transporter = nodemailer.createTransport({
-  service: 'gmail',
-  auth: {
-    user: process.env.EMAIL_USER,
-    pass: process.env.EMAIL_PASS,
-  },
-});
+const LOGO    = 'https://res.cloudinary.com/djoafwyhn/image/upload/v1774711669/tut_vn6j0w.png';
+const ADDRESS = 'Plot No. 189/190, Kapsi (Khurd), Near Pardi Naka, Bhandara Road, Nagpur - 441108 (MH)';
 
-const COMPANY_EMAIL = process.env.COMPANY_EMAIL;
-const FROM = `"Tirupati Road Lines" <${process.env.EMAIL_USER}>`;
+function getTransporter() {
+  return nodemailer.createTransport({
+    service: 'gmail',
+    auth: { user: process.env.EMAIL_USER, pass: process.env.EMAIL_PASS },
+  });
+}
+
+const COMPANY_EMAIL = () => process.env.COMPANY_EMAIL;
+const FROM          = () => `"Tirupati Road Lines Pvt. Ltd." <${process.env.EMAIL_USER}>`;
+
+// ── SHARED LAYOUT ─────────────────────────────────────────────────────────────
+
+const header = `
+  <div style="background:#0d0d1a;padding:28px 40px;border-bottom:3px solid #c9a227;">
+    <table style="width:100%;border-collapse:collapse;">
+      <tr>
+        <td style="width:60px;vertical-align:middle;">
+          <img src="${LOGO}" alt="TRL" style="height:52px;width:52px;object-fit:contain;display:block;" />
+        </td>
+        <td style="vertical-align:middle;padding-left:16px;">
+          <div style="font-family:Arial,sans-serif;font-size:18px;font-weight:800;color:#c9a227;letter-spacing:1px;line-height:1.2;">TIRUPATI ROAD LINES PVT. LTD.</div>
+          <div style="font-family:Arial,sans-serif;font-size:11px;color:#888;letter-spacing:2px;margin-top:3px;">EST. 2013 &nbsp;·&nbsp; NAGPUR, MAHARASHTRA</div>
+        </td>
+      </tr>
+    </table>
+  </div>
+`;
+
+const footer = `
+  <div style="background:#080810;padding:24px 40px;border-top:1px solid #1e1e32;text-align:center;">
+    <p style="font-family:Arial,sans-serif;font-size:13px;margin:0 0 5px;">
+      <span style="color:#f5f5f0;font-weight:600;">Email:</span>
+      <a href="mailto:tirupatiunion@gmail.com" style="color:#c9a227;text-decoration:none;font-family:Arial,sans-serif;"> tirupatiunion@gmail.com</a>
+    </p>
+    <p style="font-family:Arial,sans-serif;font-size:13px;margin:0 0 5px;">
+      <span style="color:#f5f5f0;font-weight:600;">Phone 1:</span>
+      <a href="tel:+918446123777" style="color:#c9a227;text-decoration:none;font-family:Arial,sans-serif;"> +91 8446123777</a>
+    </p>
+    <p style="font-family:Arial,sans-serif;font-size:13px;margin:0 0 5px;">
+      <span style="color:#f5f5f0;font-weight:600;">Phone 2:</span>
+      <a href="tel:+919371237770" style="color:#c9a227;text-decoration:none;font-family:Arial,sans-serif;"> +91 9371237770</a>
+    </p>
+    <p style="font-family:Arial,sans-serif;font-size:13px;margin:0 0 16px;">
+      <span style="color:#f5f5f0;font-weight:600;">Address:</span>
+      <span style="color:#c9a227;"> ${ADDRESS}</span>
+    </p>
+    <p style="font-family:Arial,sans-serif;color:#444;font-size:11px;margin:0;border-top:1px solid #1e1e32;padding-top:14px;">
+      &copy; 2025 Tirupati Road Lines Pvt. Ltd. All Rights Reserved.
+    </p>
+  </div>
+`;
+
+const wrap = (body) => `<!DOCTYPE html>
+<html>
+<body style="margin:0;padding:20px;background:#e8e8e8;font-family:Arial,sans-serif;">
+  <div style="max-width:600px;margin:0 auto;border-radius:12px;overflow:hidden;box-shadow:0 4px 24px rgba(0,0,0,0.25);">
+    ${header}
+    <div style="background:#0d0d1a;padding:32px 40px;">
+      ${body}
+    </div>
+    ${footer}
+  </div>
+</body>
+</html>`;
+
+// ── ROW helper ────────────────────────────────────────────────────────────────
+const row = (label, value, gold = false) => `
+  <tr style="border-bottom:1px solid #1e1e32;">
+    <td style="padding:11px 0;font-family:Arial,sans-serif;color:#888;font-size:13px;width:130px;vertical-align:top;">${label}</td>
+    <td style="padding:11px 0;font-family:Arial,sans-serif;color:${gold ? '#c9a227' : '#f5f5f0'};font-size:13px;font-weight:${gold ? '700' : '400'};">${value}</td>
+  </tr>
+`;
 
 // ── INQUIRY ───────────────────────────────────────────────────────────────────
 
 export async function sendInquiryEmails({ senderName, email, phone, subject, message }) {
+
   // 1. To company
-  await transporter.sendMail({
-    from: FROM,
-    to: COMPANY_EMAIL,
-    subject: `New Inquiry: ${subject} — from ${senderName}`,
-    replyTo: email,
-    html: `
-      <div style="font-family:Arial,sans-serif;max-width:600px;margin:0 auto;background:#0d0d1a;color:#f5f5f0;padding:32px;border-radius:12px;">
-        <div style="border-bottom:2px solid #c9a227;padding-bottom:16px;margin-bottom:24px;">
-          <h2 style="color:#c9a227;margin:0;">New Contact Inquiry</h2>
-          <p style="color:#aaa;margin:4px 0 0;">Tirupati Road Lines — Website Contact Form</p>
+  try {
+    await getTransporter().sendMail({
+      from: FROM(), to: COMPANY_EMAIL(), replyTo: email,
+      subject: `New Inquiry: ${subject} — ${senderName}`,
+      html: wrap(`
+        <div style="display:inline-block;background:rgba(201,162,39,0.1);border:1px solid rgba(201,162,39,0.3);border-radius:6px;padding:5px 14px;margin-bottom:24px;">
+          <span style="font-family:Arial,sans-serif;color:#c9a227;font-size:11px;font-weight:700;letter-spacing:2px;">NEW CONTACT INQUIRY</span>
         </div>
-        <table style="width:100%;border-collapse:collapse;">
-          <tr><td style="padding:10px 0;color:#aaa;width:140px;">Name</td><td style="padding:10px 0;color:#f5f5f0;font-weight:600;">${senderName}</td></tr>
-          <tr><td style="padding:10px 0;color:#aaa;">Email</td><td style="padding:10px 0;color:#f5f5f0;">${email}</td></tr>
-          <tr><td style="padding:10px 0;color:#aaa;">Phone</td><td style="padding:10px 0;color:#f5f5f0;">${phone || '—'}</td></tr>
-          <tr><td style="padding:10px 0;color:#aaa;">Subject</td><td style="padding:10px 0;color:#c9a227;font-weight:600;">${subject}</td></tr>
+        <table style="width:100%;border-collapse:collapse;margin-bottom:24px;">
+          ${row('Name', `<strong>${senderName}</strong>`)}
+          ${row('Email', `<a href="mailto:${email}" style="color:#c9a227;text-decoration:none;font-family:Arial,sans-serif;">${email}</a>`)}
+          ${row('Phone', phone || '—')}
+          ${row('Subject', subject, true)}
         </table>
-        <div style="margin-top:20px;background:#1a1a2e;padding:20px;border-radius:8px;border-left:3px solid #c9a227;">
-          <p style="color:#aaa;margin:0 0 8px;font-size:13px;letter-spacing:1px;">MESSAGE</p>
-          <p style="color:#f5f5f0;margin:0;line-height:1.7;">${message}</p>
+        <div style="background:#1a1a2e;border-left:4px solid #c9a227;padding:18px 22px;border-radius:0 8px 8px 0;margin-bottom:20px;">
+          <p style="font-family:Arial,sans-serif;color:#888;font-size:11px;letter-spacing:2px;margin:0 0 8px;text-transform:uppercase;">Message</p>
+          <p style="font-family:Arial,sans-serif;color:#f5f5f0;font-size:14px;line-height:1.8;margin:0;">${message}</p>
         </div>
-        <p style="color:#555;font-size:12px;margin-top:24px;">Hit Reply to respond directly to ${senderName} at ${email}.</p>
-      </div>
-    `,
-  });
+        <p style="font-family:Arial,sans-serif;color:#666;font-size:12px;margin:0;">
+          Reply to this email to respond directly to ${senderName}.
+        </p>
+      `),
+    });
+  } catch (err) { console.error('Company inquiry email failed:', err.message); }
 
   // 2. Thank-you to user
   if (email) {
-    await transporter.sendMail({
-      from: FROM,
-      to: email,
-      subject: 'Thank You for Contacting Tirupati Road Lines',
-      html: `
-        <div style="font-family:Arial,sans-serif;max-width:600px;margin:0 auto;background:#0d0d1a;color:#f5f5f0;padding:32px;border-radius:12px;">
-          <div style="text-align:center;padding-bottom:24px;border-bottom:2px solid #c9a227;margin-bottom:28px;">
-            <h1 style="color:#c9a227;margin:0;font-size:26px;">Tirupati Road Lines</h1>
-            <p style="color:#aaa;margin:6px 0 0;font-size:13px;">EST. 2013 · NAGPUR, MAHARASHTRA</p>
-          </div>
-          <h2 style="color:#f5f5f0;margin:0 0 12px;">Thank You, ${senderName}!</h2>
-          <p style="color:#ccc;line-height:1.8;margin:0 0 20px;">
-            We have received your inquiry regarding <strong style="color:#c9a227;">${subject}</strong>.
-            Our team will review your message and get back to you within <strong>24 hours</strong>.
+    try {
+      await getTransporter().sendMail({
+        from: FROM(), to: email,
+        subject: 'Thank You for Contacting Tirupati Road Lines Pvt. Ltd.',
+        html: wrap(`
+          <h2 style="font-family:Arial,sans-serif;color:#f5f5f0;font-size:20px;font-weight:700;margin:0 0 10px;">Thank You, ${senderName}!</h2>
+          <p style="font-family:Arial,sans-serif;color:#aaa;font-size:14px;line-height:1.8;margin:0 0 24px;">
+            We have received your inquiry regarding
+            <span style="color:#c9a227;font-weight:700;">${subject}</span>.
+            Our team will review your message and get back to you within
+            <span style="color:#f5f5f0;font-weight:700;">24 hours</span>.
           </p>
-          <div style="background:#1a1a2e;padding:20px;border-radius:8px;margin-bottom:24px;">
-            <p style="color:#aaa;margin:0 0 8px;font-size:13px;letter-spacing:1px;">YOUR MESSAGE</p>
-            <p style="color:#f5f5f0;margin:0;line-height:1.7;font-style:italic;">"${message}"</p>
+          <div style="background:#1a1a2e;border-radius:8px;padding:20px 24px;border:1px solid #2a2a3e;">
+            <p style="font-family:Arial,sans-serif;color:#888;font-size:11px;letter-spacing:2px;margin:0 0 10px;text-transform:uppercase;">Your Message</p>
+            <p style="font-family:Arial,sans-serif;color:#ccc;font-size:14px;line-height:1.8;margin:0;font-style:italic;">"${message}"</p>
           </div>
-          <div style="background:rgba(201,162,39,0.08);padding:20px;border-radius:8px;border:1px solid rgba(201,162,39,0.3);margin-bottom:24px;">
-            <p style="color:#c9a227;font-weight:700;margin:0 0 10px;">Need immediate assistance?</p>
-            <p style="color:#ccc;margin:0;">📞 <a href="tel:+918446123777" style="color:#c9a227;">+91 84461 23777</a> / <a href="tel:+919371237770" style="color:#c9a227;">+91 93712 37770</a></p>
-            <p style="color:#ccc;margin:8px 0 0;">✉️ <a href="mailto:tirupatiunion@gmail.com" style="color:#c9a227;">tirupatiunion@gmail.com</a></p>
-            <p style="color:#ccc;margin:8px 0 0;">📍 Nagpur–Bhandara Road, Nagpur, Maharashtra – 440 035</p>
-          </div>
-          <p style="color:#555;font-size:12px;text-align:center;margin:0;">© 2025 Tirupati Road Lines Pvt. Ltd. · All Rights Reserved</p>
-        </div>
-      `,
-    });
+        `),
+      });
+    } catch (err) { console.error('User inquiry email failed:', err.message); }
   }
 }
 
@@ -81,75 +136,71 @@ export async function sendBookingEmails({ customerName, email, phone, materialTy
   const formattedDate = new Date(date).toLocaleDateString('en-IN', { day: 'numeric', month: 'long', year: 'numeric' });
 
   // 1. To company
-  await transporter.sendMail({
-    from: FROM,
-    to: COMPANY_EMAIL,
-    subject: `🚛 New Booking — ${customerName} | ${materialType} | ${formattedDate}`,
-    html: `
-      <div style="font-family:Arial,sans-serif;max-width:600px;margin:0 auto;background:#0d0d1a;color:#f5f5f0;padding:32px;border-radius:12px;">
-        <div style="border-bottom:2px solid #c9a227;padding-bottom:16px;margin-bottom:24px;">
-          <h2 style="color:#c9a227;margin:0;">🚛 New Truck Booking Request</h2>
-          <p style="color:#aaa;margin:4px 0 0;">Tirupati Road Lines — Website Booking Form</p>
+  try {
+    await getTransporter().sendMail({
+      from: FROM(), to: COMPANY_EMAIL(),
+      subject: `New Booking — ${customerName} | ${materialType} | ${formattedDate}`,
+      html: wrap(`
+        <div style="display:inline-block;background:rgba(201,162,39,0.1);border:1px solid rgba(201,162,39,0.3);border-radius:6px;padding:5px 14px;margin-bottom:24px;">
+          <span style="font-family:Arial,sans-serif;color:#c9a227;font-size:11px;font-weight:700;letter-spacing:2px;">NEW TRUCK BOOKING</span>
         </div>
-        <table style="width:100%;border-collapse:collapse;">
-          <tr><td style="padding:10px 0;color:#aaa;width:160px;">Customer Name</td><td style="padding:10px 0;color:#f5f5f0;font-weight:600;">${customerName}</td></tr>
-          <tr><td style="padding:10px 0;color:#aaa;">Phone</td><td style="padding:10px 0;color:#f5f5f0;font-weight:600;">${phone}</td></tr>
-          <tr><td style="padding:10px 0;color:#aaa;">Email</td><td style="padding:10px 0;color:#f5f5f0;">${email || '—'}</td></tr>
-          <tr><td style="padding:10px 0;color:#aaa;">Material Type</td><td style="padding:10px 0;color:#c9a227;font-weight:700;">${materialType}</td></tr>
-          <tr><td style="padding:10px 0;color:#aaa;">Tonnage</td><td style="padding:10px 0;color:#f5f5f0;">${weight || 'Not specified'}</td></tr>
-          <tr><td style="padding:10px 0;color:#aaa;">Pickup Location</td><td style="padding:10px 0;color:#f5f5f0;">${pickupLocation}</td></tr>
-          <tr><td style="padding:10px 0;color:#aaa;">Drop Location</td><td style="padding:10px 0;color:#f5f5f0;">${dropLocation}</td></tr>
-          <tr><td style="padding:10px 0;color:#aaa;">Shipment Date</td><td style="padding:10px 0;color:#c9a227;font-weight:700;">${formattedDate}</td></tr>
+        <table style="width:100%;border-collapse:collapse;margin-bottom:24px;">
+          ${row('Customer', `<strong>${customerName}</strong>`)}
+          ${row('Phone', `<a href="tel:${phone}" style="color:#c9a227;text-decoration:none;font-family:Arial,sans-serif;font-weight:700;">${phone}</a>`)}
+          ${row('Email', email ? `<a href="mailto:${email}" style="color:#c9a227;text-decoration:none;font-family:Arial,sans-serif;">${email}</a>` : '—')}
+          ${row('Material', materialType, true)}
+          ${row('Tonnage', weight || 'Not specified')}
+          ${row('Pickup', pickupLocation)}
+          ${row('Drop', dropLocation)}
+          ${row('Date', formattedDate, true)}
         </table>
-        <div style="margin-top:20px;background:#1a1a2e;padding:16px 20px;border-radius:8px;border-left:3px solid #c9a227;">
-          <p style="color:#aaa;margin:0;font-size:13px;">📞 Call <strong style="color:#f5f5f0;">${customerName}</strong> at <strong style="color:#c9a227;">${phone}</strong> to confirm this booking.</p>
+        <div style="background:#1a1a2e;border-left:4px solid #c9a227;padding:16px 20px;border-radius:0 8px 8px 0;">
+          <p style="font-family:Arial,sans-serif;color:#aaa;font-size:13px;margin:0;">
+            Call <strong style="color:#f5f5f0;">${customerName}</strong> at
+            <a href="tel:${phone}" style="color:#c9a227;text-decoration:none;font-family:Arial,sans-serif;font-weight:700;">${phone}</a>
+            to confirm this booking.
+          </p>
         </div>
-      </div>
-    `,
-  });
+      `),
+    });
+  } catch (err) { console.error('Company booking email failed:', err.message); }
 
   // 2. Confirmation to user
   if (email) {
-    await transporter.sendMail({
-      from: FROM,
-      to: email,
-      subject: 'Booking Request Received — Tirupati Road Lines',
-      html: `
-        <div style="font-family:Arial,sans-serif;max-width:600px;margin:0 auto;background:#0d0d1a;color:#f5f5f0;padding:32px;border-radius:12px;">
-          <div style="text-align:center;padding-bottom:24px;border-bottom:2px solid #c9a227;margin-bottom:28px;">
-            <h1 style="color:#c9a227;margin:0;font-size:26px;">Tirupati Road Lines</h1>
-            <p style="color:#aaa;margin:6px 0 0;font-size:13px;">EST. 2013 · NAGPUR, MAHARASHTRA</p>
-          </div>
-          <div style="text-align:center;margin-bottom:28px;">
-            <div style="font-size:48px;">🚛</div>
-            <h2 style="color:#f5f5f0;margin:12px 0 8px;">Booking Request Received!</h2>
-            <p style="color:#aaa;margin:0;">Dear ${customerName}, your request has been submitted successfully.</p>
-          </div>
-          <div style="background:#1a1a2e;padding:24px;border-radius:8px;margin-bottom:24px;">
-            <p style="color:#c9a227;font-weight:700;margin:0 0 16px;font-size:13px;letter-spacing:1px;">BOOKING SUMMARY</p>
+    try {
+      await getTransporter().sendMail({
+        from: FROM(), to: email,
+        subject: 'Booking Request Received — Tirupati Road Lines Pvt. Ltd.',
+        html: wrap(`
+          <h2 style="font-family:Arial,sans-serif;color:#f5f5f0;font-size:20px;font-weight:700;margin:0 0 6px;">Booking Request Received!</h2>
+          <p style="font-family:Arial,sans-serif;color:#aaa;font-size:14px;margin:0 0 28px;">
+            Dear <span style="color:#f5f5f0;font-weight:700;">${customerName}</span>, your request has been submitted successfully.
+          </p>
+          <div style="background:#1a1a2e;border-radius:8px;padding:24px;margin-bottom:24px;border:1px solid #2a2a3e;">
+            <p style="font-family:Arial,sans-serif;color:#c9a227;font-weight:700;font-size:11px;letter-spacing:2px;margin:0 0 16px;text-transform:uppercase;">Booking Summary</p>
             <table style="width:100%;border-collapse:collapse;">
-              <tr><td style="padding:8px 0;color:#aaa;width:140px;">Material</td><td style="padding:8px 0;color:#f5f5f0;font-weight:600;">${materialType}</td></tr>
-              <tr><td style="padding:8px 0;color:#aaa;">Tonnage</td><td style="padding:8px 0;color:#f5f5f0;">${weight || 'Not specified'}</td></tr>
-              <tr><td style="padding:8px 0;color:#aaa;">From</td><td style="padding:8px 0;color:#f5f5f0;">${pickupLocation}</td></tr>
-              <tr><td style="padding:8px 0;color:#aaa;">To</td><td style="padding:8px 0;color:#f5f5f0;">${dropLocation}</td></tr>
-              <tr><td style="padding:8px 0;color:#aaa;">Date</td><td style="padding:8px 0;color:#c9a227;font-weight:700;">${formattedDate}</td></tr>
+              ${row('Material', `<strong>${materialType}</strong>`, true)}
+              ${row('Tonnage', weight || 'Not specified')}
+              ${row('From', pickupLocation)}
+              ${row('To', dropLocation)}
+              ${row('Date', formattedDate, true)}
             </table>
           </div>
-          <div style="background:rgba(201,162,39,0.08);padding:24px;border-radius:8px;border:1px solid rgba(201,162,39,0.3);margin-bottom:24px;">
-            <p style="color:#c9a227;font-weight:700;margin:0 0 14px;">What happens next?</p>
-            <p style="color:#ccc;margin:0 0 10px;line-height:1.7;">✅ Our logistics team has received your booking request.</p>
-            <p style="color:#ccc;margin:0 0 10px;line-height:1.7;">📞 Our team will call you at <strong style="color:#f5f5f0;">${phone}</strong> within <strong>2 hours</strong> to confirm availability and finalize your shipment details.</p>
-            <p style="color:#ccc;margin:0;line-height:1.7;">🛰️ Once confirmed, your cargo will be GPS-tracked from pickup to delivery.</p>
+          <div style="background:#111827;border:1px solid rgba(201,162,39,0.25);border-radius:8px;padding:20px 24px;">
+            <p style="font-family:Arial,sans-serif;color:#c9a227;font-weight:700;font-size:13px;margin:0 0 14px;">What happens next?</p>
+            <p style="font-family:Arial,sans-serif;color:#aaa;font-size:13px;line-height:1.8;margin:0 0 8px;">
+              Our logistics team has received your booking request.
+            </p>
+            <p style="font-family:Arial,sans-serif;color:#aaa;font-size:13px;line-height:1.8;margin:0 0 8px;">
+              We will call you at <span style="color:#f5f5f0;font-weight:700;">${phone}</span> within
+              <span style="color:#f5f5f0;font-weight:700;">2 hours</span> to confirm availability and finalize shipment details.
+            </p>
+            <p style="font-family:Arial,sans-serif;color:#aaa;font-size:13px;line-height:1.8;margin:0;">
+              Once confirmed, your cargo will be GPS-tracked from pickup to delivery.
+            </p>
           </div>
-          <div style="padding:20px;border-radius:8px;background:#111;margin-bottom:24px;">
-            <p style="color:#aaa;margin:0 0 10px;font-size:13px;">Need to reach us directly?</p>
-            <p style="color:#ccc;margin:0;">📞 <a href="tel:+918446123777" style="color:#c9a227;">+91 84461 23777</a> / <a href="tel:+919371237770" style="color:#c9a227;">+91 93712 37770</a></p>
-            <p style="color:#ccc;margin:6px 0 0;">✉️ <a href="mailto:tirupatiunion@gmail.com" style="color:#c9a227;">tirupatiunion@gmail.com</a></p>
-            <p style="color:#ccc;margin:6px 0 0;">📍 Nagpur–Bhandara Road, Nagpur, Maharashtra – 440 035</p>
-          </div>
-          <p style="color:#555;font-size:12px;text-align:center;margin:0;">© 2025 Tirupati Road Lines Pvt. Ltd. · All Rights Reserved</p>
-        </div>
-      `,
-    });
+        `),
+      });
+    } catch (err) { console.error('User booking email failed:', err.message); }
   }
 }
