@@ -1,20 +1,20 @@
-import nodemailer from 'nodemailer';
+import { BrevoClient } from '@getbrevo/brevo';
 
 const LOGO    = 'https://res.cloudinary.com/djoafwyhn/image/upload/v1774711669/tut_vn6j0w.png';
 const ADDRESS = 'Plot No. 189/190, Kapsi (Khurd), Near Pardi Naka, Bhandara Road, Nagpur - 441108 (MH)';
 
-function getTransporter() {
-  return nodemailer.createTransport({
-    host: 'smtp.gmail.com',
-    port: 465,
-    secure: true,
-    family: 4,
-    auth: { user: process.env.EMAIL_USER, pass: process.env.EMAIL_PASS },
-  });
+// ── Brevo v4 client (lazy-initialized) ───────────────────────────────────────
+let _client = null;
+function getClient() {
+  if (!_client) {
+    _client = new BrevoClient({ apiKey: process.env.BREVO_API_KEY });
+  }
+  return _client;
 }
 
 const COMPANY_EMAIL = () => process.env.COMPANY_EMAIL;
-const FROM          = () => `"Tirupati Road Lines Pvt. Ltd." <${process.env.EMAIL_USER}>`;
+const SENDER_EMAIL  = () => process.env.BREVO_SENDER_EMAIL;
+const SENDER_NAME   = () => process.env.BREVO_SENDER_NAME || 'Tirupati Road Lines Pvt. Ltd.';
 
 // ── SHARED LAYOUT ─────────────────────────────────────────────────────────────
 
@@ -79,16 +79,31 @@ const row = (label, value, gold = false) => `
   </tr>
 `;
 
-// ── INQUIRY ───────────────────────────────────────────────────────────────────
+// ── Brevo send helper ─────────────────────────────────────────────────────────
+async function sendEmail({ to, toName, subject, htmlContent, replyTo }) {
+  const payload = {
+    sender:      { name: SENDER_NAME(), email: SENDER_EMAIL() },
+    to:          [{ email: to, name: toName || to }],
+    subject,
+    htmlContent,
+  };
+  if (replyTo) payload.replyTo = { email: replyTo };
+
+  return getClient().transactionalEmails.sendTransacEmail(payload);
+}
+
+// ── INQUIRY (Contact Us) ──────────────────────────────────────────────────────
 
 export async function sendInquiryEmails({ senderName, email, phone, subject, message }) {
 
-  // 1. To company
+  // 1. Alert to company with full inquiry details
   try {
-    await getTransporter().sendMail({
-      from: FROM(), to: COMPANY_EMAIL(), replyTo: email,
+    await sendEmail({
+      to: COMPANY_EMAIL(),
+      toName: 'Tirupati Road Lines',
       subject: `New Inquiry: ${subject} — ${senderName}`,
-      html: wrap(`
+      replyTo: email,
+      htmlContent: wrap(`
         <div style="display:inline-block;background:rgba(201,162,39,0.1);border:1px solid rgba(201,162,39,0.3);border-radius:6px;padding:5px 14px;margin-bottom:24px;">
           <span style="font-family:Arial,sans-serif;color:#c9a227;font-size:11px;font-weight:700;letter-spacing:2px;">NEW CONTACT INQUIRY</span>
         </div>
@@ -107,15 +122,17 @@ export async function sendInquiryEmails({ senderName, email, phone, subject, mes
         </p>
       `),
     });
-  } catch (err) { console.error('Company inquiry email failed:', err.message); }
+    console.log('✅ Company inquiry alert sent to', COMPANY_EMAIL());
+  } catch (err) { console.error('❌ Company inquiry email failed:', err.message); }
 
-  // 2. Thank-you to user
+  // 2. Thank-you confirmation to the user
   if (email) {
     try {
-      await getTransporter().sendMail({
-        from: FROM(), to: email,
+      await sendEmail({
+        to: email,
+        toName: senderName,
         subject: 'Thank You for Contacting Tirupati Road Lines Pvt. Ltd.',
-        html: wrap(`
+        htmlContent: wrap(`
           <h2 style="font-family:Arial,sans-serif;color:#f5f5f0;font-size:20px;font-weight:700;margin:0 0 10px;">Thank You, ${senderName}!</h2>
           <p style="font-family:Arial,sans-serif;color:#aaa;font-size:14px;line-height:1.8;margin:0 0 24px;">
             We have received your inquiry regarding
@@ -123,27 +140,37 @@ export async function sendInquiryEmails({ senderName, email, phone, subject, mes
             Our team will review your message and get back to you within
             <span style="color:#f5f5f0;font-weight:700;">24 hours</span>.
           </p>
-          <div style="background:#1a1a2e;border-radius:8px;padding:20px 24px;border:1px solid #2a2a3e;">
+          <div style="background:#1a1a2e;border-radius:8px;padding:20px 24px;border:1px solid #2a2a3e;margin-bottom:24px;">
             <p style="font-family:Arial,sans-serif;color:#888;font-size:11px;letter-spacing:2px;margin:0 0 10px;text-transform:uppercase;">Your Message</p>
             <p style="font-family:Arial,sans-serif;color:#ccc;font-size:14px;line-height:1.8;margin:0;font-style:italic;">"${message}"</p>
           </div>
+          <div style="background:#111827;border:1px solid rgba(201,162,39,0.25);border-radius:8px;padding:20px 24px;">
+            <p style="font-family:Arial,sans-serif;color:#c9a227;font-weight:700;font-size:13px;margin:0 0 10px;">What's Next?</p>
+            <p style="font-family:Arial,sans-serif;color:#aaa;font-size:13px;line-height:1.8;margin:0;">
+              A member of our team will personally reach out to you via email or phone to address your query.
+              In the meantime, feel free to call us at
+              <a href="tel:+918446123777" style="color:#c9a227;text-decoration:none;font-family:Arial,sans-serif;font-weight:700;">+91 8446123777</a>.
+            </p>
+          </div>
         `),
       });
-    } catch (err) { console.error('User inquiry email failed:', err.message); }
+      console.log('✅ Thank-you email sent to', email);
+    } catch (err) { console.error('❌ User inquiry email failed:', err.message); }
   }
 }
 
-// ── BOOKING ───────────────────────────────────────────────────────────────────
+// ── BOOKING (Book Truck) ──────────────────────────────────────────────────────
 
 export async function sendBookingEmails({ customerName, email, phone, materialType, weight, pickupLocation, dropLocation, date }) {
   const formattedDate = new Date(date).toLocaleDateString('en-IN', { day: 'numeric', month: 'long', year: 'numeric' });
 
-  // 1. To company
+  // 1. New booking alert to company
   try {
-    await getTransporter().sendMail({
-      from: FROM(), to: COMPANY_EMAIL(),
+    await sendEmail({
+      to: COMPANY_EMAIL(),
+      toName: 'Tirupati Road Lines',
       subject: `New Booking — ${customerName} | ${materialType} | ${formattedDate}`,
-      html: wrap(`
+      htmlContent: wrap(`
         <div style="display:inline-block;background:rgba(201,162,39,0.1);border:1px solid rgba(201,162,39,0.3);border-radius:6px;padding:5px 14px;margin-bottom:24px;">
           <span style="font-family:Arial,sans-serif;color:#c9a227;font-size:11px;font-weight:700;letter-spacing:2px;">NEW TRUCK BOOKING</span>
         </div>
@@ -166,15 +193,17 @@ export async function sendBookingEmails({ customerName, email, phone, materialTy
         </div>
       `),
     });
-  } catch (err) { console.error('Company booking email failed:', err.message); }
+    console.log('✅ Company booking alert sent to', COMPANY_EMAIL());
+  } catch (err) { console.error('❌ Company booking email failed:', err.message); }
 
-  // 2. Confirmation to user
+  // 2. Booking confirmation to user
   if (email) {
     try {
-      await getTransporter().sendMail({
-        from: FROM(), to: email,
+      await sendEmail({
+        to: email,
+        toName: customerName,
         subject: 'Booking Request Received — Tirupati Road Lines Pvt. Ltd.',
-        html: wrap(`
+        htmlContent: wrap(`
           <h2 style="font-family:Arial,sans-serif;color:#f5f5f0;font-size:20px;font-weight:700;margin:0 0 6px;">Booking Request Received!</h2>
           <p style="font-family:Arial,sans-serif;color:#aaa;font-size:14px;margin:0 0 28px;">
             Dear <span style="color:#f5f5f0;font-weight:700;">${customerName}</span>, your request has been submitted successfully.
@@ -204,6 +233,7 @@ export async function sendBookingEmails({ customerName, email, phone, materialTy
           </div>
         `),
       });
-    } catch (err) { console.error('User booking email failed:', err.message); }
+      console.log('✅ Booking confirmation sent to', email);
+    } catch (err) { console.error('❌ User booking email failed:', err.message); }
   }
 }
